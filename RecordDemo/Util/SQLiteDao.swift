@@ -77,25 +77,22 @@ class SQLiteDao {
 
         do {
             let sql = """
-            select
-                day_cha
-                ,count(strftime('%Y-%m-%d',creatDate)) flag_days
-            from
-                (select
-                creatDate
-                ,date_rank
-                ,(strftime('%d',creatDate) - date_rank) as day_cha
-            from
-                (
-                select
-                        creatDate
-                        ,row_number() over(order by creatDate) date_rank
-                        from
-                            record
-                        )t1
-                        )t2
-            group by
-                    day_cha
+              select day_cha,
+                  count(strftime('%Y-%m-%d', creatDate)) flag_days
+              from (
+                      select creatDate,
+                          date_rank,
+                          (strftime('%d', creatDate) - date_rank) as day_cha
+                      from (
+                              select strftime('%Y-%m-%d', creatDate) as creatDate,
+                                  row_number() over(
+                                      order by creatDate
+                                  ) date_rank
+                              from record
+                              group by creatDate
+                          ) t1
+                  ) t2
+              group by day_cha
             """
             let rs = try database.executeQuery(sql, values: nil)
 
@@ -107,8 +104,8 @@ class SQLiteDao {
                 list.append(model)
             }
 
-            let continuousDay = list.max { $0.diffDay > $1.diffDay }
-            let maxFlag = list.max { $0.flag > $1.flag }
+            let continuousDay = list.max { $0.diffDay < $1.diffDay }
+            let maxFlag = list.max { $0.flag < $1.flag }
 
             print("last count==>\(continuousDay?.flag), maxCount==>\(maxFlag?.flag)")
             return (continuousDay?.flag ?? 0, maxFlag?.flag ?? 0)
